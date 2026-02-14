@@ -3,7 +3,7 @@ prefix     = "agenticai"
 location   = "Sweden Central"
 owner_tag  = "ahmad.alsayad@cca-dev.com"
 
-rg_name    = "rg-agentic-ai-mfg-prod"
+rg_name    = "rg-agentic-ai-mfg-environment"
 acr_name   = "acragenticaimfg"
 kv_name    = "kv-agentic-ai-mfg"
 sa_name    = "stagenticaimfg"
