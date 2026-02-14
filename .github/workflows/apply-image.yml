@@ -1,0 +1,43 @@
+name: apply-image
+on:
+  workflow_call:
+    inputs:
+      image_tag:
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  apply-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Azure login via OIDC
+        uses: azure/login@v2
+        with:
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+
+      - name: terraform init
+        working-directory: infra
+        run: terraform init -backend-config=backend.tfvars
+
+      - name: Apply new image tag
+        working-directory: infra
+        env:
+          TF_VAR_image_tag: ${{ inputs.image_tag }}
+          TF_VAR_azure_openai_api_key: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          TF_VAR_azure_search_admin_key: ${{ secrets.AZURE_SEARCH_ADMIN_KEY }}
+          TF_VAR_client_secret: ${{ secrets.CLIENT_SECRET }}
+          TF_VAR_azure_speech_key: ${{ secrets.AZURE_SPEECH_KEY }}
+        run: terraform apply -auto-approve
+
+      - name: Output Deployment Info
+        run: |
+          echo "✅ Image updated to: ${{ inputs.image_tag }}"
