@@ -162,187 +162,185 @@ resource "azurerm_container_app_environment" "cae" {
 }
 
 # Container App Environment Storage (für Blob Mount)
-# resource "azurerm_container_app_environment_storage" "snapshots_storage" {
-#   name                         = "snapshots-storage"
-#   container_app_environment_id = azurerm_container_app_environment.cae.id
-#   account_name                 = azurerm_storage_account.storage.name
-#   share_name                   = var.storage_container_name
-#   access_key                   = azurerm_storage_account.storage.primary_access_key
-#   access_mode                  = "ReadWrite"
-# }
+resource "azurerm_container_app_environment_storage" "snapshots_storage" {
+  name                         = "snapshots-storage"
+  container_app_environment_id = azurerm_container_app_environment.cae.id
+  account_name                 = azurerm_storage_account.storage.name
+  share_name                   = var.storage_container_name
+  access_key                   = azurerm_storage_account.storage.primary_access_key
+  access_mode                  = "ReadWrite"
+}
 
-# Container App - AUSKOMMENTIERT BIS IMAGE VORHANDEN
-# resource "azurerm_container_app" "api" {
-# Container App - AUSKOMMENTIERT BIS IMAGE VORHANDEN
-# resource "azurerm_container_app" "api" {
-#   name                         = "${var.ca_name}-${local.suffix}"
-#   resource_group_name          = azurerm_resource_group.rg.name
-#   container_app_environment_id = azurerm_container_app_environment.cae.id
-#   revision_mode                = "Single"
-#   tags                         = local.common_tags
-# 
-#   identity {
-#     type         = "UserAssigned"
-#     identity_ids = [azurerm_user_assigned_identity.mi.id]
-#   }
-# 
-#   registry {
-#     server   = azurerm_container_registry.acr.login_server
-#     identity = azurerm_user_assigned_identity.mi.id
-#   }
-# 
-#   ingress {
-#     external_enabled = true
-#     transport        = "auto"
-#     target_port      = var.api_port
-#     
-#     traffic_weight {
-#       latest_revision = true
-#       percentage      = 100
-#     }
-#   }
-# 
-#   template {
-#     container {
-#       name   = "agentic-ai-backend"
-#       image  = "${azurerm_container_registry.acr.login_server}/agentic-ai-backend:${var.image_tag}"
-#       cpu    = var.container_cpu
-#       memory = var.container_memory
-# 
-#       # Environment Variables - Non-Sensitive
-#       env {
-#         name  = "AZURE_OPENAI_API_VERSION"
-#         value = var.azure_openai_api_version
-#       }
-# 
-#       env {
-#         name  = "AZURE_OPENAI_EMBEDDINGS_DEPLOYMENT"
-#         value = var.azure_openai_embeddings_deployment
-#       }
-# 
-#       env {
-#         name  = "AZURE_SPEECH_REGION"
-#         value = var.azure_speech_region
-#       }
-# 
-#       # Environment Variables - From Key Vault Secrets
-#       env {
-#         name        = "AZURE_OPENAI_API_KEY"
-#         secret_name = "azure-openai-api-key"
-#       }
-# 
-#       env {
-#         name        = "AZURE_OPENAI_ENDPOINT"
-#         secret_name = "azure-openai-endpoint"
-#       }
-# 
-#       env {
-#         name        = "AZURE_OPENAI_DEPLOYMENT"
-#         secret_name = "azure-openai-deployment"
-#       }
-# 
-#       env {
-#         name        = "AZURE_SEARCH_ADMIN_KEY"
-#         secret_name = "azure-search-admin-key"
-#       }
-# 
-#       env {
-#         name        = "AZURE_SEARCH_ENDPOINT"
-#         secret_name = "azure-search-endpoint"
-#       }
-# 
-#       env {
-#         name        = "AZURE_SEARCH_INDEX"
-#         secret_name = "azure-search-index"
-#       }
-# 
-#       env {
-#         name        = "CLIENT_SECRET"
-#         secret_name = "client-secret"
-#       }
-# 
-#       env {
-#         name        = "AZURE_SPEECH_KEY"
-#         secret_name = "azure-speech-key"
-#       }
-# 
-#       # Storage Connection
-#       env {
-#         name  = "AZURE_STORAGE_CONNECTION_STRING"
-#         value = azurerm_storage_account.storage.primary_connection_string
-#       }
-# 
-#       env {
-#         name  = "SNAPSHOTS_CONTAINER"
-#         value = var.storage_container_name
-#       }
-# 
-#       # Volume Mount für Snapshots
-#       volume_mounts {
-#         name = "snapshots-volume"
-#         path = "/mnt/snapshots"
-#       }
-#     }
-# 
-#     min_replicas = var.min_replicas
-#     max_replicas = var.max_replicas
-# 
-#     volume {
-#       name         = "snapshots-volume"
-#       storage_type = "AzureFile"
-#       storage_name = azurerm_container_app_environment_storage.snapshots_storage.name
-#     }
-#   }
-# 
-#   # Key Vault Secrets References
-#   secret {
-#     name                = "azure-openai-api-key"
-#     key_vault_secret_id = azurerm_key_vault_secret.azure_openai_key.id
-#     identity            = azurerm_user_assigned_identity.mi.id
-#   }
-# 
-#   secret {
-#     name                = "azure-openai-endpoint"
-#     key_vault_secret_id = azurerm_key_vault_secret.azure_openai_endpoint.id
-#     identity            = azurerm_user_assigned_identity.mi.id
-#   }
-# 
-#   secret {
-#     name                = "azure-openai-deployment"
-#     key_vault_secret_id = azurerm_key_vault_secret.azure_openai_deployment.id
-#     identity            = azurerm_user_assigned_identity.mi.id
-#   }
-# 
-#   secret {
-#     name                = "azure-search-admin-key"
-#     key_vault_secret_id = azurerm_key_vault_secret.azure_search_key.id
-#     identity            = azurerm_user_assigned_identity.mi.id
-#   }
-# 
-#   secret {
-#     name                = "azure-search-endpoint"
-#     key_vault_secret_id = azurerm_key_vault_secret.azure_search_endpoint.id
-#     identity            = azurerm_user_assigned_identity.mi.id
-#   }
-# 
-#   secret {
-#     name                = "azure-search-index"
-#     key_vault_secret_id = azurerm_key_vault_secret.azure_search_index.id
-#     identity            = azurerm_user_assigned_identity.mi.id
-#   }
-# 
-#   secret {
-#     name                = "client-secret"
-#     key_vault_secret_id = azurerm_key_vault_secret.client_secret.id
-#     identity            = azurerm_user_assigned_identity.mi.id
-#   }
-# 
-#   secret {
-#     name                = "azure-speech-key"
-#     key_vault_secret_id = azurerm_key_vault_secret.azure_speech_key.id
-#     identity            = azurerm_user_assigned_identity.mi.id
-#   }
-# }
+# Container App
+resource "azurerm_container_app" "api" {
+  name                         = "${var.ca_name}-${local.suffix}"
+  resource_group_name          = azurerm_resource_group.rg.name
+  container_app_environment_id = azurerm_container_app_environment.cae.id
+  revision_mode                = var.revision_mode
+  tags                         = local.common_tags
+
+  identity {
+    type         = "UserAssigned"
+    identity_ids = [azurerm_user_assigned_identity.mi.id]
+  }
+
+  registry {
+    server   = azurerm_container_registry.acr.login_server
+    identity = azurerm_user_assigned_identity.mi.id
+  }
+
+  ingress {
+    external_enabled = true
+    transport        = "auto"
+    target_port      = var.api_port
+    
+    traffic_weight {
+      latest_revision = true
+      percentage      = 100
+    }
+  }
+
+  template {
+    container {
+      name   = "agentic-ai-backend"
+      image  = "${azurerm_container_registry.acr.login_server}/agentic-ai-backend:${var.image_tag}"
+      cpu    = var.container_cpu
+      memory = var.container_memory
+
+      # Environment Variables - Non-Sensitive
+      env {
+        name  = "AZURE_OPENAI_API_VERSION"
+        value = var.azure_openai_api_version
+      }
+
+      env {
+        name  = "AZURE_OPENAI_EMBEDDINGS_DEPLOYMENT"
+        value = var.azure_openai_embeddings_deployment
+      }
+
+      env {
+        name  = "AZURE_SPEECH_REGION"
+        value = var.azure_speech_region
+      }
+
+      # Environment Variables - From Key Vault Secrets
+      env {
+        name        = "AZURE_OPENAI_API_KEY"
+        secret_name = "azure-openai-api-key"
+      }
+
+      env {
+        name        = "AZURE_OPENAI_ENDPOINT"
+        secret_name = "azure-openai-endpoint"
+      }
+
+      env {
+        name        = "AZURE_OPENAI_DEPLOYMENT"
+        secret_name = "azure-openai-deployment"
+      }
+
+      env {
+        name        = "AZURE_SEARCH_ADMIN_KEY"
+        secret_name = "azure-search-admin-key"
+      }
+
+      env {
+        name        = "AZURE_SEARCH_ENDPOINT"
+        secret_name = "azure-search-endpoint"
+      }
+
+      env {
+        name        = "AZURE_SEARCH_INDEX"
+        secret_name = "azure-search-index"
+      }
+
+      env {
+        name        = "CLIENT_SECRET"
+        secret_name = "client-secret"
+      }
+
+      env {
+        name        = "AZURE_SPEECH_KEY"
+        secret_name = "azure-speech-key"
+      }
+
+      # Storage Connection
+      env {
+        name  = "AZURE_STORAGE_CONNECTION_STRING"
+        value = azurerm_storage_account.storage.primary_connection_string
+      }
+
+      env {
+        name  = "SNAPSHOTS_CONTAINER"
+        value = var.storage_container_name
+      }
+
+      # Volume Mount für Snapshots
+      volume_mounts {
+        name = "snapshots-volume"
+        path = "/mnt/snapshots"
+      }
+    }
+
+    min_replicas = var.min_replicas
+    max_replicas = var.max_replicas
+
+    volume {
+      name         = "snapshots-volume"
+      storage_type = "AzureFile"
+      storage_name = azurerm_container_app_environment_storage.snapshots_storage.name
+    }
+  }
+
+  # Key Vault Secrets References
+  secret {
+    name                = "azure-openai-api-key"
+    key_vault_secret_id = azurerm_key_vault_secret.azure_openai_key.id
+    identity            = azurerm_user_assigned_identity.mi.id
+  }
+
+  secret {
+    name                = "azure-openai-endpoint"
+    key_vault_secret_id = azurerm_key_vault_secret.azure_openai_endpoint.id
+    identity            = azurerm_user_assigned_identity.mi.id
+  }
+
+  secret {
+    name                = "azure-openai-deployment"
+    key_vault_secret_id = azurerm_key_vault_secret.azure_openai_deployment.id
+    identity            = azurerm_user_assigned_identity.mi.id
+  }
+
+  secret {
+    name                = "azure-search-admin-key"
+    key_vault_secret_id = azurerm_key_vault_secret.azure_search_key.id
+    identity            = azurerm_user_assigned_identity.mi.id
+  }
+
+  secret {
+    name                = "azure-search-endpoint"
+    key_vault_secret_id = azurerm_key_vault_secret.azure_search_endpoint.id
+    identity            = azurerm_user_assigned_identity.mi.id
+  }
+
+  secret {
+    name                = "azure-search-index"
+    key_vault_secret_id = azurerm_key_vault_secret.azure_search_index.id
+    identity            = azurerm_user_assigned_identity.mi.id
+  }
+
+  secret {
+    name                = "client-secret"
+    key_vault_secret_id = azurerm_key_vault_secret.client_secret.id
+    identity            = azurerm_user_assigned_identity.mi.id
+  }
+
+  secret {
+    name                = "azure-speech-key"
+    key_vault_secret_id = azurerm_key_vault_secret.azure_speech_key.id
+    identity            = azurerm_user_assigned_identity.mi.id
+  }
+}
 
 # Role Assignments - Managed Identity Permissions
 resource "azurerm_role_assignment" "uami_acr_pull" {
@@ -374,4 +372,14 @@ resource "azurerm_role_assignment" "terraform_kv_secrets_officer" {
   scope                = azurerm_key_vault.kv.id
   role_definition_name = "Key Vault Secrets Officer"
   principal_id         = data.azurerm_client_config.me.object_id
+}
+
+# Static Web App
+resource "azurerm_static_web_app" "ui" {
+  name                = "swa-agentic-ai-ui"
+  resource_group_name = azurerm_resource_group.rg.name
+  location            = "West Europe"  # Static Web Apps nicht in Sweden Central verfügbar
+  sku_tier            = "Free"
+  sku_size            = "Free"
+  tags                = local.common_tags
 }

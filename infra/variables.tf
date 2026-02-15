@@ -79,7 +79,29 @@ variable "api_port" {
 variable "allowed_origins" {
   type        = list(string)
   default     = []
-  description = "Allowed Origins for CORS (Static Web App URL wird automatisch hinzugefügt)"
+  description = "Allowed Origins for CORS"
+}
+
+variable "custom_domain_name" {
+  description = "Custom domain name for Container App (optional, e.g. api.agentic-ai-mfg.com)"
+  type        = string
+  default     = ""
+}
+
+variable "revision_mode" {
+  description = "Revision mode: Single (only latest) or Multiple (traffic split, blue/green)"
+  type        = string
+  default     = "Single"
+  validation {
+    condition     = contains(["Single", "Multiple"], var.revision_mode)
+    error_message = "Revision mode must be either 'Single' or 'Multiple'."
+  }
+}
+
+variable "enable_blue_green" {
+  description = "Enable Blue/Green deployment with traffic split (requires Multiple revision mode)"
+  type        = bool
+  default     = false
 }
 
 # Azure OpenAI Configuration
