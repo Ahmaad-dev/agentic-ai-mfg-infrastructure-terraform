@@ -161,16 +161,6 @@ resource "azurerm_container_app_environment" "cae" {
   tags                       = local.common_tags
 }
 
-# Container App Environment Storage (für Blob Mount)
-resource "azurerm_container_app_environment_storage" "snapshots_storage" {
-  name                         = "snapshots-storage"
-  container_app_environment_id = azurerm_container_app_environment.cae.id
-  account_name                 = azurerm_storage_account.storage.name
-  share_name                   = var.storage_container_name
-  access_key                   = azurerm_storage_account.storage.primary_access_key
-  access_mode                  = "ReadWrite"
-}
-
 # Container App
 resource "azurerm_container_app" "api" {
   name                         = "${var.ca_name}-${local.suffix}"
@@ -263,33 +253,75 @@ resource "azurerm_container_app" "api" {
         name        = "AZURE_SPEECH_KEY"
         secret_name = "azure-speech-key"
       }
+      # Agent-spezifische OpenAI Env Vars (Chat, RAG, Orchestration)
+      env {
+        name        = "AZURE_OPENAI_CHAT_ENDPOINT"
+        secret_name = "azure-openai-endpoint"
+      }
+      env {
+        name        = "AZURE_OPENAI_CHAT_KEY"
+        secret_name = "azure-openai-api-key"
+      }
+      env {
+        name  = "AZURE_OPENAI_CHAT_API_VERSION"
+        value = var.azure_openai_api_version
+      }
+      env {
+        name        = "AZURE_OPENAI_CHAT_DEPLOYMENT"
+        secret_name = "azure-openai-deployment"
+      }
 
-      # Storage Connection
+      env {
+        name        = "AZURE_OPENAI_RAG_ENDPOINT"
+        secret_name = "azure-openai-endpoint"
+      }
+      env {
+        name        = "AZURE_OPENAI_RAG_KEY"
+        secret_name = "azure-openai-api-key"
+      }
+      env {
+        name  = "AZURE_OPENAI_RAG_API_VERSION"
+        value = var.azure_openai_api_version
+      }
+      env {
+        name        = "AZURE_OPENAI_RAG_DEPLOYMENT"
+        secret_name = "azure-openai-deployment"
+      }
+      env {
+        name        = "AZURE_OPENAI_ORCHESTRATION_ENDPOINT"
+        secret_name = "azure-openai-endpoint"
+      }
+      env {
+        name        = "AZURE_OPENAI_ORCHESTRATION_KEY"
+        secret_name = "azure-openai-api-key"
+      }
+      env {
+        name  = "AZURE_OPENAI_ORCHESTRATION_API_VERSION"
+        value = var.azure_openai_api_version
+      }
+      env {
+        name        = "AZURE_OPENAI_ORCHESTRATION_DEPLOYMENT"
+        secret_name = "azure-openai-deployment"
+      }
+      # Storage Configuration
+      env {
+        name  = "STORAGE_MODE"
+        value = "AZURE"
+      }
+
       env {
         name  = "AZURE_STORAGE_CONNECTION_STRING"
         value = azurerm_storage_account.storage.primary_connection_string
       }
 
       env {
-        name  = "SNAPSHOTS_CONTAINER"
+        name  = "AZURE_STORAGE_CONTAINER"
         value = var.storage_container_name
-      }
-
-      # Volume Mount für Snapshots
-      volume_mounts {
-        name = "snapshots-volume"
-        path = "/mnt/snapshots"
       }
     }
 
     min_replicas = var.min_replicas
     max_replicas = var.max_replicas
-
-    volume {
-      name         = "snapshots-volume"
-      storage_type = "AzureFile"
-      storage_name = azurerm_container_app_environment_storage.snapshots_storage.name
-    }
   }
 
   # Key Vault Secrets References

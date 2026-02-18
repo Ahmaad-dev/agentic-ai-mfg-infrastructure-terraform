@@ -19,7 +19,7 @@ min_replicas     = 0  # Scale-to-Zero aktiviert
 max_replicas     = 1
 container_cpu    = 0.5
 container_memory = "1Gi"
-image_tag        = "0.2.0"
+image_tag        = "0.2.1"
 
 # Azure OpenAI Configuration
 azure_openai_endpoint             = "https://agentic-ai-mfg.openai.azure.com"
