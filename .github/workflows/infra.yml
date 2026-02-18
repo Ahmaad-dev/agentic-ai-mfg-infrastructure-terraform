@@ -1,11 +1,14 @@
 name: deploy-backend
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       version:
         description: 'Image Version Tag'
-        required: true
-        default: '0.2.0'
+        required: false
+        default: ''
 
 permissions:
   id-token: write
@@ -19,12 +22,23 @@ jobs:
   build-and-push:
     runs-on: ubuntu-latest
     outputs:
-      image_tag: ${{ github.event.inputs.version }}
+      image_tag: ${{ steps.set_version.outputs.version }}
+    env:
+      DEFAULT_VERSION: ${{ github.event.inputs.version }}
     
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Set image version
+        id: set_version
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          fi
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -56,7 +70,7 @@ jobs:
           file: Demo/Dockerfile
           push: true
           tags: |
-            ${{ steps.acr.outputs.name }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.event.inputs.version }}
+            ${{ steps.acr.outputs.name }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ steps.set_version.outputs.version }}
             ${{ steps.acr.outputs.name }}.azurecr.io/${{ env.IMAGE_NAME }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -65,8 +79,8 @@ jobs:
         run: |
           echo "### Image erfolgreich gebaut!" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Image:** ${{ steps.acr.outputs.name }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.event.inputs.version }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Version:** ${{ github.event.inputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** ${{ steps.acr.outputs.name }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ steps.set_version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${{ steps.set_version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
   deploy:
