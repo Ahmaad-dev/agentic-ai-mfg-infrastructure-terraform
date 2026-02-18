@@ -1,37 +1,81 @@
-name: infra
+name: deploy-backend
 on:
-  push:
-    branches: [main]
-    paths: ["infra/**", ".github/workflows/infra.yml"]
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Image Version Tag'
+        required: true
+        default: '0.2.0'
 
 permissions:
   id-token: write
   contents: read
+  packages: write
+
+env:
+  IMAGE_NAME: agentic-ai-backend
 
 jobs:
-  apply:
+  build-and-push:
     runs-on: ubuntu-latest
-    env:
-      TF_VAR_prefix: agenticai
-      TF_VAR_location: "Sweden Central"
-      TF_VAR_owner_tag: "ahmad.alsayad@cca-dev.com"
-      TF_VAR_rg_name: rg-agentic-ai-mfg-prod
-      TF_VAR_acr_name: acragenticaimfg
-      TF_VAR_kv_name: kv-agentic-ai-mfg
-      TF_VAR_sa_name: stagenticaimfg
-      TF_VAR_cae_name: cae-agentic-ai-mfg
-      TF_VAR_ca_name: ca-agentic-ai-backend
-      TF_VAR_mi_name: mi-agentic-ai-mfg
-      
-      # Sensitive Variables aus GitHub Secrets
-      TF_VAR_azure_openai_api_key: ${{ secrets.AZURE_OPENAI_API_KEY }}
-      TF_VAR_azure_search_admin_key: ${{ secrets.AZURE_SEARCH_ADMIN_KEY }}
-      TF_VAR_client_secret: ${{ secrets.CLIENT_SECRET }}
-      TF_VAR_azure_speech_key: ${{ secrets.AZURE_SPEECH_KEY }}
+    outputs:
+      image_tag: ${{ github.event.inputs.version }}
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Azure login via OIDC
+        uses: azure/login@v2
+        with:
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+
+      - name: Resolve ACR name dynamically
+        id: acr
+        run: |
+          ACR_NAME=$(az acr list \
+            --resource-group rg-agentic-ai-mfg-environment \
+            --query "[?starts_with(name, 'acragenticaimfg')].name | [0]" \
+            --output tsv)
+          echo "name=${ACR_NAME}" >> $GITHUB_OUTPUT
+
+      - name: Login to Azure Container Registry
+        run: |
+          az acr login --name ${{ steps.acr.outputs.name }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: Demo
+          file: Demo/Dockerfile
+          push: true
+          tags: |
+            ${{ steps.acr.outputs.name }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.event.inputs.version }}
+            ${{ steps.acr.outputs.name }}.azurecr.io/${{ env.IMAGE_NAME }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Deployment Summary
+        run: |
+          echo "### Image erfolgreich gebaut!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** ${{ steps.acr.outputs.name }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.event.inputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${{ github.event.inputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
+
       - uses: hashicorp/setup-terraform@v3
 
       - name: Azure login via OIDC
@@ -41,45 +85,21 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
 
-      - name: Ensure tfstate storage exists
-        run: |
-          # Resource Group für tfstate
-          az group create \
-            --name rg-agentic-ai-mfg-manual \
-            --location "Sweden Central" \
-            --tags Owner=ahmad.alsayad@cca-dev.com || true
-          
-          # Storage Account für tfstate
-          az storage account create \
-            --name tfstateagenticaimfg \
-            --resource-group rg-agentic-ai-mfg-manual \
-            --location "Sweden Central" \
-            --sku Standard_ZRS \
-            --tags Owner=ahmad.alsayad@cca-dev.com || true
-          
-          # Container für tfstate
-          az storage container create \
-            --name agentic-ai-tfstate \
-            --account-name tfstateagenticaimfg || true
-
-      - name: terraform init
-        working-directory: infra
+      - name: Terraform init
+        working-directory: infra/agentic-ai-mfg-infrastructure-terraform/infra
         run: terraform init -backend-config=backend.tfvars
 
-      - name: terraform validate
-        working-directory: infra
-        run: terraform validate
+      - name: Apply new image tag
+        working-directory: infra/agentic-ai-mfg-infrastructure-terraform/infra
+        env:
+          TF_VAR_image_tag: ${{ needs.build-and-push.outputs.image_tag }}
+          TF_VAR_azure_openai_api_key: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          TF_VAR_azure_search_admin_key: ${{ secrets.AZURE_SEARCH_ADMIN_KEY }}
+          TF_VAR_client_secret: ${{ secrets.CLIENT_SECRET }}
+          TF_VAR_azure_speech_key: ${{ secrets.AZURE_SPEECH_KEY }}
+        run: terraform apply -auto-approve
 
-      - name: terraform plan
-        working-directory: infra
-        run: terraform plan -out=tf.plan
-
-      - name: terraform apply
-        working-directory: infra
-        run: terraform apply -auto-approve tf.plan
-
-      # - name: Output Container App URL
-      #   working-directory: infra
-      #   run: |
-      #     echo "Container App URL:"
-      #     terraform output -raw container_app_url
+      - name: Deployment Summary
+        run: |
+          echo "### Container App aktualisiert!" >> $GITHUB_STEP_SUMMARY
+          echo "**Image Tag:** ${{ needs.build-and-push.outputs.image_tag }}" >> $GITHUB_STEP_SUMMARY

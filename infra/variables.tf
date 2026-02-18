@@ -183,7 +183,7 @@ variable "min_replicas" {
 
 variable "max_replicas" {
   type        = number
-  default     = 5
+  default     = 1
   description = "Maximum replicas"
 }
 
