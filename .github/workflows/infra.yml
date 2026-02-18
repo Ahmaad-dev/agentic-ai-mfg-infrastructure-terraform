@@ -59,6 +59,11 @@ jobs:
         working-directory: infra
         run: terraform validate
 
+      - name: Remove orphaned CAE storage from state
+        working-directory: infra
+        run: |
+          terraform state rm azurerm_container_app_environment_storage.snapshots_storage 2>/dev/null || true
+
       - name: terraform plan
         working-directory: infra
         run: terraform plan -out=tf.plan
