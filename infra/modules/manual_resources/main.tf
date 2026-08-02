@@ -190,7 +190,6 @@ resource "azurerm_search_service" "search" {
   local_authentication_enabled  = true
   public_network_access_enabled = true
   network_rule_bypass_option    = "None"
-  semantic_search_sku           = "free"
   tags                          = local.common_tags
 }
 
