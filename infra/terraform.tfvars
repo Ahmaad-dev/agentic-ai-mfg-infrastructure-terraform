@@ -48,5 +48,8 @@ azure_search_index = "process-docs-index"
 # Azure Speech Configuration
 azure_speech_region = "swedencentral"
 
+# Pending-review notification recipient
+notification_recipient_email = "ahmad.alsayad@cancom.com"
+
 # Allowed origins - wird durch Static Web App ergänzt
 allowed_origins = []

@@ -309,8 +309,7 @@ variable "acs_sender_display_name" {
 
 variable "notification_recipient_email" {
   type        = string
-  sensitive   = true
-  description = "Recipient for pending-review notifications; provide via TF_VAR_notification_recipient_email"
+  description = "Recipient for pending-review notifications"
 
   validation {
     condition     = can(regex("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$", trimspace(var.notification_recipient_email)))
