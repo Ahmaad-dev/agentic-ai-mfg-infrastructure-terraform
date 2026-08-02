@@ -16,6 +16,37 @@ locals {
     ManagedBy   = "Terraform"
   }
   suffix = random_string.suffix.result
+
+  database_url = sensitive(format(
+    "mssql+pyodbc://%s:%s@%s:1433/%s?driver=ODBC+Driver+18+for+SQL+Server&Encrypt=yes&TrustServerCertificate=no",
+    urlencode(var.sql_admin_username),
+    urlencode(var.sql_admin_password),
+    azurerm_mssql_server.application.fully_qualified_domain_name,
+    var.sql_database_name,
+  ))
+
+  acs_sender_email = module.manual_resources.acs_sender_email
+}
+
+# Resources that currently exist in rg-agentic-ai-mfg and will be recreated
+# by Terraform after that resource group is manually deleted in the portal.
+module "manual_resources" {
+  source = "./modules/manual_resources"
+
+  location                         = var.location
+  owner_tag                        = var.owner_tag
+  resource_group_name              = var.manual_rg_name
+  foundry_account_name             = var.foundry_account_name
+  foundry_project_name             = var.foundry_project_name
+  foundry_allowed_ips              = var.foundry_allowed_ips
+  speech_account_name              = var.speech_account_name
+  search_service_name              = var.search_service_name
+  storage_account_name             = var.document_storage_account_name
+  storage_container_name           = var.document_storage_container_name
+  communication_service_name       = var.communication_service_name
+  email_communication_service_name = var.email_communication_service_name
+  acs_sender_username              = var.acs_sender_username
+  acs_sender_display_name          = var.acs_sender_display_name
 }
 
 # Resource Group
@@ -40,26 +71,27 @@ resource "azurerm_container_registry" "acr" {
   location            = azurerm_resource_group.rg.location
   sku                 = "Basic"
   admin_enabled       = false
+  encryption          = []
   tags                = local.common_tags
 }
 
 # Key Vault
 resource "azurerm_key_vault" "kv" {
-  name                        = "${var.kv_name}-${local.suffix}"
-  resource_group_name         = azurerm_resource_group.rg.name
-  location                    = azurerm_resource_group.rg.location
-  tenant_id                   = data.azurerm_client_config.me.tenant_id
-  sku_name                    = "standard"
-  enable_rbac_authorization   = true
-  purge_protection_enabled    = true
-  soft_delete_retention_days  = 7
-  tags                        = local.common_tags
+  name                       = "${var.kv_name}-${local.suffix}"
+  resource_group_name        = azurerm_resource_group.rg.name
+  location                   = azurerm_resource_group.rg.location
+  tenant_id                  = data.azurerm_client_config.me.tenant_id
+  sku_name                   = "standard"
+  rbac_authorization_enabled = true
+  purge_protection_enabled   = true
+  soft_delete_retention_days = 7
+  tags                       = local.common_tags
 }
 
 # Key Vault Secrets - Azure OpenAI
 resource "azurerm_key_vault_secret" "azure_openai_key" {
   name         = "AZURE-OPENAI-API-KEY"
-  value        = var.azure_openai_api_key
+  value        = module.manual_resources.foundry_primary_access_key
   key_vault_id = azurerm_key_vault.kv.id
   tags         = local.common_tags
   depends_on   = [azurerm_role_assignment.terraform_kv_secrets_officer]
@@ -67,7 +99,7 @@ resource "azurerm_key_vault_secret" "azure_openai_key" {
 
 resource "azurerm_key_vault_secret" "azure_openai_endpoint" {
   name         = "AZURE-OPENAI-ENDPOINT"
-  value        = var.azure_openai_endpoint
+  value        = module.manual_resources.openai_endpoint
   key_vault_id = azurerm_key_vault.kv.id
   tags         = local.common_tags
   depends_on   = [azurerm_role_assignment.terraform_kv_secrets_officer]
@@ -84,7 +116,7 @@ resource "azurerm_key_vault_secret" "azure_openai_deployment" {
 # Key Vault Secrets - Azure Search
 resource "azurerm_key_vault_secret" "azure_search_key" {
   name         = "AZURE-SEARCH-ADMIN-KEY"
-  value        = var.azure_search_admin_key
+  value        = module.manual_resources.search_primary_key
   key_vault_id = azurerm_key_vault.kv.id
   tags         = local.common_tags
   depends_on   = [azurerm_role_assignment.terraform_kv_secrets_officer]
@@ -92,7 +124,7 @@ resource "azurerm_key_vault_secret" "azure_search_key" {
 
 resource "azurerm_key_vault_secret" "azure_search_endpoint" {
   name         = "AZURE-SEARCH-ENDPOINT"
-  value        = var.azure_search_endpoint
+  value        = module.manual_resources.search_endpoint
   key_vault_id = azurerm_key_vault.kv.id
   tags         = local.common_tags
   depends_on   = [azurerm_role_assignment.terraform_kv_secrets_officer]
@@ -109,7 +141,7 @@ resource "azurerm_key_vault_secret" "azure_search_index" {
 # Key Vault Secret - Smart Planning Client Secret
 resource "azurerm_key_vault_secret" "client_secret" {
   name         = "CLIENT-SECRET"
-  value        = var.client_secret
+  value        = var.smart_planning_client_secret
   key_vault_id = azurerm_key_vault.kv.id
   tags         = local.common_tags
   depends_on   = [azurerm_role_assignment.terraform_kv_secrets_officer]
@@ -118,7 +150,7 @@ resource "azurerm_key_vault_secret" "client_secret" {
 # Key Vault Secret - Azure Speech
 resource "azurerm_key_vault_secret" "azure_speech_key" {
   name         = "AZURE-SPEECH-KEY"
-  value        = var.azure_speech_key
+  value        = module.manual_resources.speech_primary_access_key
   key_vault_id = azurerm_key_vault.kv.id
   tags         = local.common_tags
   depends_on   = [azurerm_role_assignment.terraform_kv_secrets_officer]
@@ -126,13 +158,15 @@ resource "azurerm_key_vault_secret" "azure_speech_key" {
 
 # Storage Account für Blob Storage (Snapshots)
 resource "azurerm_storage_account" "storage" {
-  name                     = "${var.sa_name}${local.suffix}"
-  resource_group_name      = azurerm_resource_group.rg.name
-  location                 = azurerm_resource_group.rg.location
-  account_kind             = "StorageV2"
-  account_tier             = "Standard"
-  account_replication_type = "LRS"
-  tags                     = local.common_tags
+  name                             = "${var.sa_name}${local.suffix}"
+  resource_group_name              = azurerm_resource_group.rg.name
+  location                         = azurerm_resource_group.rg.location
+  account_kind                     = "StorageV2"
+  account_tier                     = "Standard"
+  account_replication_type         = "LRS"
+  https_traffic_only_enabled       = true
+  cross_tenant_replication_enabled = true
+  tags                             = local.common_tags
 }
 
 # Blob Container für Snapshots
@@ -183,7 +217,7 @@ resource "azurerm_container_app" "api" {
     external_enabled = true
     transport        = "auto"
     target_port      = var.api_port
-    
+
     traffic_weight {
       latest_revision = true
       percentage      = 100
@@ -253,6 +287,39 @@ resource "azurerm_container_app" "api" {
         name        = "AZURE_SPEECH_KEY"
         secret_name = "azure-speech-key"
       }
+
+      # Relational persistence
+      env {
+        name        = "DATABASE_URL"
+        secret_name = "database-url"
+      }
+
+      # Azure Communication Services Email
+      env {
+        name  = "NOTIFICATION_CHANNEL"
+        value = "acs"
+      }
+
+      env {
+        name        = "ACS_CONNECTION_STRING"
+        secret_name = "acs-connection-string"
+      }
+
+      env {
+        name  = "ACS_SENDER_EMAIL"
+        value = local.acs_sender_email
+      }
+
+      env {
+        name        = "NOTIFICATION_RECIPIENT_EMAIL"
+        secret_name = "notification-recipient-email"
+      }
+
+      env {
+        name  = "APP_BASE_URL"
+        value = "https://${azurerm_static_web_app.ui.default_host_name}"
+      }
+
       # Agent-spezifische OpenAI Env Vars (Chat, RAG, Orchestration)
       env {
         name        = "AZURE_OPENAI_CHAT_ENDPOINT"
@@ -372,6 +439,25 @@ resource "azurerm_container_app" "api" {
     key_vault_secret_id = azurerm_key_vault_secret.azure_speech_key.id
     identity            = azurerm_user_assigned_identity.mi.id
   }
+
+  secret {
+    name                = "database-url"
+    key_vault_secret_id = azurerm_key_vault_secret.database_url.id
+    identity            = azurerm_user_assigned_identity.mi.id
+  }
+
+  secret {
+    name                = "acs-connection-string"
+    key_vault_secret_id = azurerm_key_vault_secret.acs_connection_string.id
+    identity            = azurerm_user_assigned_identity.mi.id
+  }
+
+  secret {
+    name                = "notification-recipient-email"
+    key_vault_secret_id = azurerm_key_vault_secret.notification_recipient_email.id
+    identity            = azurerm_user_assigned_identity.mi.id
+  }
+
 }
 
 # Role Assignments - Managed Identity Permissions
@@ -403,15 +489,85 @@ resource "azurerm_role_assignment" "uami_contributor_rg" {
 resource "azurerm_role_assignment" "terraform_kv_secrets_officer" {
   scope                = azurerm_key_vault.kv.id
   role_definition_name = "Key Vault Secrets Officer"
-  principal_id         = data.azurerm_client_config.me.object_id
+  principal_id         = var.terraform_principal_object_id
 }
 
 # Static Web App
 resource "azurerm_static_web_app" "ui" {
   name                = "swa-agentic-ai-ui"
   resource_group_name = azurerm_resource_group.rg.name
-  location            = "West Europe"  # Static Web Apps nicht in Sweden Central verfügbar
+  location            = "West Europe" # Static Web Apps nicht in Sweden Central verfügbar
   sku_tier            = "Free"
   sku_size            = "Free"
   tags                = local.common_tags
+}
+
+# Azure SQL persistence
+resource "azurerm_mssql_server" "application" {
+  name                          = "${var.sql_server_name}-${local.suffix}"
+  resource_group_name           = azurerm_resource_group.rg.name
+  location                      = azurerm_resource_group.rg.location
+  version                       = "12.0"
+  administrator_login           = var.sql_admin_username
+  administrator_login_password  = var.sql_admin_password
+  minimum_tls_version           = "1.2"
+  public_network_access_enabled = true
+  tags                          = local.common_tags
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "azurerm_mssql_database" "application" {
+  name                                = var.sql_database_name
+  server_id                           = azurerm_mssql_server.application.id
+  sku_name                            = var.sql_sku
+  max_size_gb                         = 2
+  storage_account_type                = "Geo"
+  transparent_data_encryption_enabled = true
+  tags                                = local.common_tags
+
+  short_term_retention_policy {
+    retention_days           = 7
+    backup_interval_in_hours = 12
+  }
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+# The existing Container Apps Environment has neither VNet integration nor a
+# stable, dedicated outbound IP. The Azure-services rule is therefore the
+# narrowest reliable SQL firewall option without adding prohibited networking.
+resource "azurerm_mssql_firewall_rule" "allow_azure_services" {
+  name             = "AllowAzureServices"
+  server_id        = azurerm_mssql_server.application.id
+  start_ip_address = "0.0.0.0"
+  end_ip_address   = "0.0.0.0"
+}
+
+resource "azurerm_key_vault_secret" "database_url" {
+  name         = "DATABASE-URL"
+  value        = local.database_url
+  key_vault_id = azurerm_key_vault.kv.id
+  tags         = local.common_tags
+  depends_on   = [azurerm_role_assignment.terraform_kv_secrets_officer]
+}
+
+resource "azurerm_key_vault_secret" "acs_connection_string" {
+  name         = "ACS-CONNECTION-STRING"
+  value        = module.manual_resources.communication_primary_connection_string
+  key_vault_id = azurerm_key_vault.kv.id
+  tags         = local.common_tags
+  depends_on   = [azurerm_role_assignment.terraform_kv_secrets_officer]
+}
+
+resource "azurerm_key_vault_secret" "notification_recipient_email" {
+  name         = "NOTIFICATION-RECIPIENT-EMAIL"
+  value        = var.notification_recipient_email
+  key_vault_id = azurerm_key_vault.kv.id
+  tags         = local.common_tags
+  depends_on   = [azurerm_role_assignment.terraform_kv_secrets_officer]
 }

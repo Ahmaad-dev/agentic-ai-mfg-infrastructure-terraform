@@ -32,9 +32,9 @@ output "container_app_custom_domain" {
 output "container_app_revision_info" {
   description = "Container App Revision Info"
   value = {
-    mode           = var.revision_mode
-    latest_name    = azurerm_container_app.api.latest_revision_name
-    blue_green     = var.enable_blue_green
+    mode        = var.revision_mode
+    latest_name = azurerm_container_app.api.latest_revision_name
+    blue_green  = var.enable_blue_green
   }
 }
 
@@ -87,4 +87,42 @@ output "log_analytics_workspace_id" {
 output "container_app_environment_id" {
   value       = azurerm_container_app_environment.cae.id
   description = "Container App Environment ID"
+}
+
+output "manual_resource_group_name" {
+  value       = module.manual_resources.resource_group_name
+  description = "Resource group recreated from the former manual deployment"
+}
+
+output "foundry_account_id" {
+  value       = module.manual_resources.foundry_account_id
+  description = "Azure AI Foundry AIServices account ID"
+}
+
+output "foundry_project_id" {
+  value       = module.manual_resources.foundry_project_id
+  description = "Azure AI Foundry project ID"
+}
+
+output "azure_openai_endpoint" {
+  value       = module.manual_resources.openai_endpoint
+  description = "Azure OpenAI-compatible endpoint"
+}
+
+output "azure_search_service_id" {
+  value       = module.manual_resources.search_service_id
+  description = "Azure AI Search service ID"
+}
+
+output "document_storage" {
+  value = {
+    account_name   = module.manual_resources.document_storage_account_name
+    container_name = module.manual_resources.document_storage_container_name
+  }
+  description = "Target for restoring the three source PDF files"
+}
+
+output "acs_sender_email" {
+  value       = module.manual_resources.acs_sender_email
+  description = "Email sender address on the recreated ACS Azure-managed domain"
 }

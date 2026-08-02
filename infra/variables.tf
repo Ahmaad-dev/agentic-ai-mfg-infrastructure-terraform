@@ -10,6 +10,12 @@ variable "location" {
   description = "Azure Region"
 }
 
+variable "subscription_id" {
+  type        = string
+  sensitive   = true
+  description = "Azure subscription ID required by AzureRM 4.x; provide via TF_VAR_subscription_id"
+}
+
 variable "owner_tag" {
   type        = string
   default     = "ahmad.alsayad@cca-dev.com"
@@ -104,17 +110,88 @@ variable "enable_blue_green" {
   default     = false
 }
 
-# Azure OpenAI Configuration
-variable "azure_openai_endpoint" {
+# Resources recreated from the manually deployed resource group
+variable "manual_rg_name" {
   type        = string
-  default     = "https://agentic-ai-mfg.openai.azure.com"
-  description = "Azure OpenAI Endpoint"
+  default     = "rg-agentic-ai-mfg"
+  description = "Resource group deleted manually in the portal and then recreated by Terraform"
 }
 
+variable "terraform_principal_object_id" {
+  type        = string
+  default     = "1b513227-4b85-413f-bb86-b603197b92dc"
+  description = "Object ID of the GitHub Actions managed identity that Terraform grants Key Vault Secrets Officer"
+}
+
+variable "foundry_account_name" {
+  type        = string
+  default     = "agentic-ai-mfg"
+  description = "Azure AI Foundry AIServices account name"
+}
+
+variable "foundry_project_name" {
+  type        = string
+  default     = "agentic-ai-mfg-project"
+  description = "Azure AI Foundry project name"
+}
+
+variable "foundry_allowed_ips" {
+  type = list(string)
+  default = [
+    "46.151.204.34",
+    "212.197.172.220",
+    "84.115.220.146",
+    "84.115.213.84",
+    "46.124.165.247",
+    "140.78.167.9",
+    "140.78.5.110",
+    "140.78.5.104",
+    "194.166.59.190",
+    "192.164.16.200",
+  ]
+  description = "IP rules captured from the existing Foundry account"
+}
+
+variable "speech_account_name" {
+  type        = string
+  default     = "agentic-ai-stt-mfg"
+  description = "Azure AI Speech service name"
+}
+
+variable "search_service_name" {
+  type        = string
+  default     = "ai-search-mfg"
+  description = "Azure AI Search service name"
+}
+
+variable "document_storage_account_name" {
+  type        = string
+  default     = "saagenticaimfg"
+  description = "Storage account for AI source documents"
+}
+
+variable "document_storage_container_name" {
+  type        = string
+  default     = "basic-ai-informations"
+  description = "Private blob container for AI source documents"
+}
+
+# Azure OpenAI Configuration
 variable "azure_openai_deployment" {
   type        = string
   default     = "gpt-4o"
   description = "Azure OpenAI Deployment Name"
+
+  validation {
+    condition = contains([
+      "gpt-4.1",
+      "gpt-4o",
+      "gpt-4o-mini",
+      "gpt-5.1",
+      "gpt-5.2-chat",
+    ], var.azure_openai_deployment)
+    error_message = "azure_openai_deployment must reference one of the Terraform-managed chat deployments."
+  }
 }
 
 variable "azure_openai_api_version" {
@@ -130,12 +207,6 @@ variable "azure_openai_embeddings_deployment" {
 }
 
 # Azure AI Search Configuration
-variable "azure_search_endpoint" {
-  type        = string
-  default     = "https://ai-search-mfg.search.windows.net"
-  description = "Azure AI Search Endpoint"
-}
-
 variable "azure_search_index" {
   type        = string
   default     = "process-docs-index"
@@ -150,28 +221,10 @@ variable "azure_speech_region" {
 }
 
 # Sensitive Variables (aus GitHub Secrets)
-variable "azure_openai_api_key" {
+variable "smart_planning_client_secret" {
   type        = string
   sensitive   = true
-  description = "Azure OpenAI API Key"
-}
-
-variable "azure_search_admin_key" {
-  type        = string
-  sensitive   = true
-  description = "Azure Search Admin Key"
-}
-
-variable "client_secret" {
-  type        = string
-  sensitive   = true
-  description = "Smart Planning API Client Secret"
-}
-
-variable "azure_speech_key" {
-  type        = string
-  sensitive   = true
-  description = "Azure Speech Service Key"
+  description = "Smart Planning API client secret; provide via TF_VAR_smart_planning_client_secret"
 }
 
 # Container Scaling Configuration
@@ -197,4 +250,91 @@ variable "container_memory" {
   type        = string
   default     = "1Gi"
   description = "Container Memory"
+}
+
+# Azure SQL
+variable "sql_server_name" {
+  type        = string
+  default     = "sql-agentic-ai-mfg"
+  description = "Base name of the Azure SQL logical server; the existing random suffix is appended"
+
+  validation {
+    condition     = can(regex("^[a-z0-9][a-z0-9-]{0,54}[a-z0-9]$", var.sql_server_name))
+    error_message = "sql_server_name must contain 2-56 lowercase letters, digits, or hyphens and must start and end with a letter or digit."
+  }
+}
+
+variable "sql_database_name" {
+  type        = string
+  default     = "sqldb-agentic-ai-mfg"
+  description = "Azure SQL database name"
+}
+
+variable "sql_sku" {
+  type        = string
+  default     = "Basic"
+  description = "Cost-optimized Azure SQL Database SKU for the application workload"
+}
+
+variable "sql_admin_username" {
+  type        = string
+  default     = "agenticaiadmin"
+  description = "SQL authentication administrator username"
+}
+
+variable "sql_admin_password" {
+  type        = string
+  sensitive   = true
+  description = "SQL authentication administrator password; provide via TF_VAR_sql_admin_password"
+
+  validation {
+    condition     = length(var.sql_admin_password) >= 12 && length(var.sql_admin_password) <= 128
+    error_message = "sql_admin_password must be between 12 and 128 characters."
+  }
+
+  validation {
+    condition = (
+      (length(regexall("[a-z]", var.sql_admin_password)) > 0 ? 1 : 0) +
+      (length(regexall("[A-Z]", var.sql_admin_password)) > 0 ? 1 : 0) +
+      (length(regexall("[0-9]", var.sql_admin_password)) > 0 ? 1 : 0) +
+      (length(regexall("[^a-zA-Z0-9]", var.sql_admin_password)) > 0 ? 1 : 0)
+    ) >= 3
+    error_message = "sql_admin_password must contain characters from at least three of these groups: lowercase, uppercase, digits, and symbols."
+  }
+}
+
+# Azure Communication Services Email
+variable "communication_service_name" {
+  type        = string
+  default     = "acs-agentic-ai-test"
+  description = "Azure Communication Service recreated with its existing name"
+}
+
+variable "email_communication_service_name" {
+  type        = string
+  default     = "agentic-ai-mfg-ecs-test"
+  description = "Email Communication Service recreated with its existing name"
+}
+
+variable "acs_sender_username" {
+  type        = string
+  default     = "DoNotReply"
+  description = "Sender username for the Azure-managed ACS email domain"
+}
+
+variable "acs_sender_display_name" {
+  type        = string
+  default     = "DoNotReply"
+  description = "Display name for ACS email messages"
+}
+
+variable "notification_recipient_email" {
+  type        = string
+  sensitive   = true
+  description = "Recipient for pending-review notifications; provide via TF_VAR_notification_recipient_email"
+
+  validation {
+    condition     = can(regex("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$", var.notification_recipient_email))
+    error_message = "notification_recipient_email must be a valid email address."
+  }
 }

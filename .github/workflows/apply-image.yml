@@ -28,15 +28,33 @@ jobs:
         working-directory: infra
         run: terraform init -backend-config=backend.tfvars
 
-      - name: Apply new image tag
+      - name: Verify initial infrastructure apply completed
+        working-directory: infra
+        run: |
+          terraform state list | grep -qx 'module.manual_resources.azurerm_resource_group.manual' || {
+            echo "Initial infrastructure apply is required before image-only updates."
+            exit 1
+          }
+
+      - name: Plan new image tag
         working-directory: infra
         env:
           TF_VAR_image_tag: ${{ inputs.image_tag }}
-          TF_VAR_azure_openai_api_key: ${{ secrets.AZURE_OPENAI_API_KEY }}
-          TF_VAR_azure_search_admin_key: ${{ secrets.AZURE_SEARCH_ADMIN_KEY }}
-          TF_VAR_client_secret: ${{ secrets.CLIENT_SECRET }}
-          TF_VAR_azure_speech_key: ${{ secrets.AZURE_SPEECH_KEY }}
-        run: terraform apply -auto-approve
+          TF_VAR_smart_planning_client_secret: ${{ secrets.SMART_PLANNING_CLIENT_SECRET }}
+          TF_VAR_subscription_id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          TF_VAR_sql_admin_password: ${{ secrets.SQL_ADMIN_PASSWORD }}
+          TF_VAR_notification_recipient_email: ${{ secrets.NOTIFICATION_RECIPIENT_EMAIL }}
+        run: terraform plan -input=false -out=tf.plan
+
+      - name: Apply planned image tag
+        working-directory: infra
+        env:
+          TF_VAR_image_tag: ${{ inputs.image_tag }}
+          TF_VAR_smart_planning_client_secret: ${{ secrets.SMART_PLANNING_CLIENT_SECRET }}
+          TF_VAR_subscription_id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          TF_VAR_sql_admin_password: ${{ secrets.SQL_ADMIN_PASSWORD }}
+          TF_VAR_notification_recipient_email: ${{ secrets.NOTIFICATION_RECIPIENT_EMAIL }}
+        run: terraform apply -auto-approve tf.plan
 
       - name: Output Deployment Info
         run: |
