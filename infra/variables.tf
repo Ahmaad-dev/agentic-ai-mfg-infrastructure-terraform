@@ -225,6 +225,11 @@ variable "smart_planning_client_secret" {
   type        = string
   sensitive   = true
   description = "Smart Planning API client secret; provide via TF_VAR_smart_planning_client_secret"
+
+  validation {
+    condition     = length(trimspace(var.smart_planning_client_secret)) > 0
+    error_message = "smart_planning_client_secret must not be empty; configure SMART_PLANNING_CLIENT_SECRET as a GitHub repository secret."
+  }
 }
 
 # Container Scaling Configuration
