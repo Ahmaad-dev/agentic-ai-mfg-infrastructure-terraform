@@ -282,27 +282,6 @@ variable "sql_admin_username" {
   description = "SQL authentication administrator username"
 }
 
-variable "sql_admin_password" {
-  type        = string
-  sensitive   = true
-  description = "SQL authentication administrator password; provide via TF_VAR_sql_admin_password"
-
-  validation {
-    condition     = length(var.sql_admin_password) >= 12 && length(var.sql_admin_password) <= 128
-    error_message = "sql_admin_password must be between 12 and 128 characters."
-  }
-
-  validation {
-    condition = (
-      (length(regexall("[a-z]", var.sql_admin_password)) > 0 ? 1 : 0) +
-      (length(regexall("[A-Z]", var.sql_admin_password)) > 0 ? 1 : 0) +
-      (length(regexall("[0-9]", var.sql_admin_password)) > 0 ? 1 : 0) +
-      (length(regexall("[^a-zA-Z0-9]", var.sql_admin_password)) > 0 ? 1 : 0)
-    ) >= 3
-    error_message = "sql_admin_password must contain characters from at least three of these groups: lowercase, uppercase, digits, and symbols."
-  }
-}
-
 # Azure Communication Services Email
 variable "communication_service_name" {
   type        = string
@@ -334,7 +313,7 @@ variable "notification_recipient_email" {
   description = "Recipient for pending-review notifications; provide via TF_VAR_notification_recipient_email"
 
   validation {
-    condition     = can(regex("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$", var.notification_recipient_email))
+    condition     = can(regex("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$", trimspace(var.notification_recipient_email)))
     error_message = "notification_recipient_email must be a valid email address."
   }
 }

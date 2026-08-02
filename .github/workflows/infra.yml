@@ -22,7 +22,6 @@ jobs:
       # Sensitive Variables aus GitHub Secrets
       TF_VAR_smart_planning_client_secret: ${{ secrets.SMART_PLANNING_CLIENT_SECRET }}
       TF_VAR_subscription_id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-      TF_VAR_sql_admin_password: ${{ secrets.SQL_ADMIN_PASSWORD }}
       TF_VAR_notification_recipient_email: ${{ secrets.NOTIFICATION_RECIPIENT_EMAIL }}
 
     steps:

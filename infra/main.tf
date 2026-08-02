@@ -7,6 +7,18 @@ resource "random_string" "suffix" {
   upper   = false
 }
 
+# Generated once and persisted in the remote Terraform state. The value is
+# reused for Azure SQL and stored in Key Vault for controlled retrieval.
+resource "random_password" "sql_admin" {
+  length           = 32
+  special          = true
+  min_lower        = 4
+  min_upper        = 4
+  min_numeric      = 4
+  min_special      = 4
+  override_special = "!#$%&*()-_=+[]{}:?"
+}
+
 # Lokale Variablen für Tags
 locals {
   common_tags = {
@@ -20,7 +32,7 @@ locals {
   database_url = sensitive(format(
     "mssql+pyodbc://%s:%s@%s:1433/%s?driver=ODBC+Driver+18+for+SQL+Server&Encrypt=yes&TrustServerCertificate=no",
     urlencode(var.sql_admin_username),
-    urlencode(var.sql_admin_password),
+    urlencode(random_password.sql_admin.result),
     azurerm_mssql_server.application.fully_qualified_domain_name,
     var.sql_database_name,
   ))
@@ -509,7 +521,7 @@ resource "azurerm_mssql_server" "application" {
   location                      = azurerm_resource_group.rg.location
   version                       = "12.0"
   administrator_login           = var.sql_admin_username
-  administrator_login_password  = var.sql_admin_password
+  administrator_login_password  = random_password.sql_admin.result
   minimum_tls_version           = "1.2"
   public_network_access_enabled = true
   tags                          = local.common_tags
@@ -556,6 +568,14 @@ resource "azurerm_key_vault_secret" "database_url" {
   depends_on   = [azurerm_role_assignment.terraform_kv_secrets_officer]
 }
 
+resource "azurerm_key_vault_secret" "sql_admin_password" {
+  name         = "SQL-ADMIN-PASSWORD"
+  value        = random_password.sql_admin.result
+  key_vault_id = azurerm_key_vault.kv.id
+  tags         = local.common_tags
+  depends_on   = [azurerm_role_assignment.terraform_kv_secrets_officer]
+}
+
 resource "azurerm_key_vault_secret" "acs_connection_string" {
   name         = "ACS-CONNECTION-STRING"
   value        = module.manual_resources.communication_primary_connection_string
@@ -566,7 +586,7 @@ resource "azurerm_key_vault_secret" "acs_connection_string" {
 
 resource "azurerm_key_vault_secret" "notification_recipient_email" {
   name         = "NOTIFICATION-RECIPIENT-EMAIL"
-  value        = var.notification_recipient_email
+  value        = trimspace(var.notification_recipient_email)
   key_vault_id = azurerm_key_vault.kv.id
   tags         = local.common_tags
   depends_on   = [azurerm_role_assignment.terraform_kv_secrets_officer]

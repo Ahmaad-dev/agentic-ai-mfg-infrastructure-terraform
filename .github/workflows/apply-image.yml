@@ -42,7 +42,6 @@ jobs:
           TF_VAR_image_tag: ${{ inputs.image_tag }}
           TF_VAR_smart_planning_client_secret: ${{ secrets.SMART_PLANNING_CLIENT_SECRET }}
           TF_VAR_subscription_id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          TF_VAR_sql_admin_password: ${{ secrets.SQL_ADMIN_PASSWORD }}
           TF_VAR_notification_recipient_email: ${{ secrets.NOTIFICATION_RECIPIENT_EMAIL }}
         run: terraform plan -input=false -out=tf.plan
 
@@ -52,7 +51,6 @@ jobs:
           TF_VAR_image_tag: ${{ inputs.image_tag }}
           TF_VAR_smart_planning_client_secret: ${{ secrets.SMART_PLANNING_CLIENT_SECRET }}
           TF_VAR_subscription_id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          TF_VAR_sql_admin_password: ${{ secrets.SQL_ADMIN_PASSWORD }}
           TF_VAR_notification_recipient_email: ${{ secrets.NOTIFICATION_RECIPIENT_EMAIL }}
         run: terraform apply -auto-approve tf.plan
 
