@@ -406,70 +406,71 @@ resource "azurerm_container_app" "api" {
   # Key Vault Secrets References
   secret {
     name                = "azure-openai-api-key"
-    key_vault_secret_id = azurerm_key_vault_secret.azure_openai_key.id
+    key_vault_secret_id = azurerm_key_vault_secret.azure_openai_key.versionless_id
     identity            = azurerm_user_assigned_identity.mi.id
   }
 
   secret {
     name                = "azure-openai-endpoint"
-    key_vault_secret_id = azurerm_key_vault_secret.azure_openai_endpoint.id
+    key_vault_secret_id = azurerm_key_vault_secret.azure_openai_endpoint.versionless_id
     identity            = azurerm_user_assigned_identity.mi.id
   }
 
   secret {
     name                = "azure-openai-deployment"
-    key_vault_secret_id = azurerm_key_vault_secret.azure_openai_deployment.id
+    key_vault_secret_id = azurerm_key_vault_secret.azure_openai_deployment.versionless_id
     identity            = azurerm_user_assigned_identity.mi.id
   }
 
   secret {
     name                = "azure-search-admin-key"
-    key_vault_secret_id = azurerm_key_vault_secret.azure_search_key.id
+    key_vault_secret_id = azurerm_key_vault_secret.azure_search_key.versionless_id
     identity            = azurerm_user_assigned_identity.mi.id
   }
 
   secret {
     name                = "azure-search-endpoint"
-    key_vault_secret_id = azurerm_key_vault_secret.azure_search_endpoint.id
+    key_vault_secret_id = azurerm_key_vault_secret.azure_search_endpoint.versionless_id
     identity            = azurerm_user_assigned_identity.mi.id
   }
 
   secret {
     name                = "azure-search-index"
-    key_vault_secret_id = azurerm_key_vault_secret.azure_search_index.id
+    key_vault_secret_id = azurerm_key_vault_secret.azure_search_index.versionless_id
     identity            = azurerm_user_assigned_identity.mi.id
   }
 
   secret {
     name                = "client-secret"
-    key_vault_secret_id = azurerm_key_vault_secret.client_secret.id
+    key_vault_secret_id = azurerm_key_vault_secret.client_secret.versionless_id
     identity            = azurerm_user_assigned_identity.mi.id
   }
 
   secret {
     name                = "azure-speech-key"
-    key_vault_secret_id = azurerm_key_vault_secret.azure_speech_key.id
+    key_vault_secret_id = azurerm_key_vault_secret.azure_speech_key.versionless_id
     identity            = azurerm_user_assigned_identity.mi.id
   }
 
   secret {
     name                = "database-url"
-    key_vault_secret_id = azurerm_key_vault_secret.database_url.id
+    key_vault_secret_id = azurerm_key_vault_secret.database_url.versionless_id
     identity            = azurerm_user_assigned_identity.mi.id
   }
 
   secret {
     name                = "acs-connection-string"
-    key_vault_secret_id = azurerm_key_vault_secret.acs_connection_string.id
+    key_vault_secret_id = azurerm_key_vault_secret.acs_connection_string.versionless_id
     identity            = azurerm_user_assigned_identity.mi.id
   }
 
   secret {
     name                = "notification-recipient-email"
-    key_vault_secret_id = azurerm_key_vault_secret.notification_recipient_email.id
+    key_vault_secret_id = azurerm_key_vault_secret.notification_recipient_email.versionless_id
     identity            = azurerm_user_assigned_identity.mi.id
   }
 
+  depends_on = [azurerm_role_assignment.uami_kv_secrets_user]
 }
 
 # Role Assignments - Managed Identity Permissions
