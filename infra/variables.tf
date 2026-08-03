@@ -235,8 +235,8 @@ variable "smart_planning_client_secret" {
 # Container Scaling Configuration
 variable "min_replicas" {
   type        = number
-  default     = 0
-  description = "Minimum replicas (0 = Scale-to-Zero)"
+  default     = 1
+  description = "Minimum replicas (0 = Scale-to-Zero; hier bewusst 1, siehe terraform.tfvars)"
 }
 
 variable "max_replicas" {

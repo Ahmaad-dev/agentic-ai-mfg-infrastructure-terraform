@@ -30,15 +30,23 @@ acs_sender_username              = "DoNotReply"
 acs_sender_display_name          = "DoNotReply"
 
 # Container Configuration
-api_port         = 8000
-min_replicas     = 0 # Scale-to-Zero aktiviert
+api_port = 8000
+# Scale-to-Zero DEAKTIVIERT (02.08.2026, Nutzerentscheidung): das Backend faehrt die
+# Korrektur-Pipeline in mehrminuetigen Subprozessen. Ein Kaltstart mitten im Ablauf ist
+# nicht zumutbar, und die Wartezeit beim ersten Request entfaellt damit ebenfalls.
+# ACHTUNG: max_replicas bleibt 1 — ein langer Pipeline-Lauf belegt die einzige Instanz
+# weiterhin fuer die gesamte Dauer.
+min_replicas     = 1
 max_replicas     = 1
 container_cpu    = 0.5
 container_memory = "1Gi"
 image_tag        = "0.2.1"
 
 # Azure OpenAI Configuration
-azure_openai_deployment            = "gpt-4o"
+# 02.08.2026 von gpt-4o auf gpt-4.1 umgestellt. Diese EINE Zeile speist ueber das
+# Key-Vault-Secret azure-openai-deployment alle drei Alias-Variablen (CHAT, RAG,
+# ORCHESTRATION) — sie stellt also das gesamte Backend um.
+azure_openai_deployment            = "gpt-4.1"
 azure_openai_api_version           = "2025-01-01-preview"
 azure_openai_embeddings_deployment = "text-embedding-3-small"
 
