@@ -188,6 +188,16 @@ resource "azurerm_storage_container" "snapshots" {
   container_access_type = "private"
 }
 
+# Lernkarten (AP7). Bewusst ein EIGENER Container: sie sind Konfiguration, keine
+# Snapshot-Daten. In einem Behaelter namens "snapshots" zu liegen laedt zum
+# Missverstaendnis ein — und wer dort aufraeumt, wuerde das Regelwerk mitloeschen.
+# Die Karten liegen direkt in der Container-Wurzel, deshalb RULEBOOK_SKILLS_PREFIX="".
+resource "azurerm_storage_container" "skills" {
+  name                  = var.skills_container_name
+  storage_account_name  = azurerm_storage_account.storage.name
+  container_access_type = "private"
+}
+
 # Log Analytics Workspace
 resource "azurerm_log_analytics_workspace" "law" {
   name                = "${var.prefix}-law-${local.suffix}"
@@ -382,6 +392,33 @@ resource "azurerm_container_app" "api" {
         name        = "AZURE_OPENAI_ORCHESTRATION_DEPLOYMENT"
         secret_name = "azure-openai-deployment"
       }
+      # Verhaltensschalter der Anwendung.
+      # Beide lasen bisher nur ihre Codestandards, weil sie hier fehlten — sie liessen sich
+      # also ohne einen neuen Image-Build nicht umstellen. HUMAN_IN_THE_LOOP ist der
+      # Sicherheitsschalter des Projekts (false = die KI wendet Korrekturen ohne Freigabe an),
+      # RULEBOOK_MODE waehlt zwischen den Lernkarten und dem alten Monolith-Regelwerk.
+      env {
+        name  = "HUMAN_IN_THE_LOOP"
+        value = var.human_in_the_loop
+      }
+
+      env {
+        name  = "RULEBOOK_MODE"
+        value = var.rulebook_mode
+      }
+
+      # Container und Praefix der Lernkarten. Der leere Praefix ist Absicht: die Karten
+      # liegen in der Wurzel ihres eigenen Containers, sonst waere der Pfad "skills/skills/".
+      env {
+        name  = "AZURE_SKILLS_CONTAINER"
+        value = azurerm_storage_container.skills.name
+      }
+
+      env {
+        name  = "RULEBOOK_SKILLS_PREFIX"
+        value = ""
+      }
+
       # Storage Configuration
       env {
         name  = "STORAGE_MODE"

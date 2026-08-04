@@ -321,3 +321,31 @@ variable "notification_recipient_email" {
     error_message = "notification_recipient_email must be a valid email address."
   }
 }
+
+variable "human_in_the_loop" {
+  description = "Sicherheitsschalter: true = jede Korrektur braucht eine menschliche Freigabe. NIEMALS ohne ausdrueckliche Entscheidung auf false setzen."
+  type        = string
+  default     = "true"
+
+  validation {
+    condition     = contains(["true", "false"], lower(var.human_in_the_loop))
+    error_message = "human_in_the_loop muss \"true\" oder \"false\" sein."
+  }
+}
+
+variable "rulebook_mode" {
+  description = "Regelwerk-Quelle: cards = Lernkarten aus dem Blob Storage (Praefix skills/), monolith = die eine grosse Regeldatei aus dem Image."
+  type        = string
+  default     = "cards"
+
+  validation {
+    condition     = contains(["cards", "monolith"], lower(var.rulebook_mode))
+    error_message = "rulebook_mode muss \"cards\" oder \"monolith\" sein."
+  }
+}
+
+variable "skills_container_name" {
+  description = "Blob-Container fuer die Lernkarten (AP7). Getrennt von den Snapshots, damit Konfiguration und Daten nicht im selben Behaelter liegen."
+  type        = string
+  default     = "skills"
+}
