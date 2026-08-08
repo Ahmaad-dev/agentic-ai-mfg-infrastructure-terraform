@@ -43,11 +43,9 @@ resource "azurerm_virtual_network" "main" {
 
 # Infrastruktur-Subnetz der Container App Environment.
 #
-# Groesse /23: Eine Consumption-only Environment verlangt mindestens /23 und
-# KEINE Delegation. Workload-Profile-Environments kaemen mit /27 aus, brauchen
-# dafuer aber die Delegation Microsoft.App/environments. Der /23-Zuschnitt
-# erfuellt beide Anforderungen — falls Azure spaeter zu Workload Profiles
-# zwingt, ist nur die Delegation nachzutragen, kein Neuzuschnitt.
+# Groesse /23: Workload-Profile-Environments verlangen mindestens /27. Der
+# grosszuegigere /23-Zuschnitt bleibt bestehen — er kostet nichts und deckt
+# auch eine spaetere Consumption-only Environment ab.
 #
 # Das Subnetz gehoert EXKLUSIV der Environment. Hier darf nichts anderes rein.
 resource "azurerm_subnet" "cae" {
@@ -56,12 +54,20 @@ resource "azurerm_subnet" "cae" {
   virtual_network_name = azurerm_virtual_network.main.name
   address_prefixes     = [var.cae_subnet_prefix]
 
-  # Fuer eine Workload-Profiles-Environment zusaetzlich noetig:
-  # delegation {
-  #   name = "container-apps"
-  #   service_delegation {
-  #     name    = "Microsoft.App/environments"
-  #     actions = ["Microsoft.Network/virtualNetworks/subnets/join/action"]
-  #   }
-  # }
+  # PFLICHT — nachgetragen am 04.08.2026, nachdem der erste Apply hier scheiterte:
+  #   ManagedEnvironmentSubnetDelegationError: The subnet of the environment
+  #   must be delegated to the service 'Microsoft.App/environments'.
+  #
+  # Azure laesst eine VNet-integrierte Environment ohne diese Delegation nicht
+  # zu. Die urspruengliche Annahme, eine Consumption-only Environment komme
+  # ohne Delegation aus, war fuer diesen Weg falsch. Konsequenz in main.tf:
+  # die Environment wird eine Workload-Profiles-Environment — mit AUSSCHLIESSLICH
+  # dem Profil "Consumption", die Abrechnung bleibt also verbrauchsbasiert.
+  delegation {
+    name = "Microsoft.App-environments"
+    service_delegation {
+      name    = "Microsoft.App/environments"
+      actions = ["Microsoft.Network/virtualNetworks/subnets/join/action"]
+    }
+  }
 }

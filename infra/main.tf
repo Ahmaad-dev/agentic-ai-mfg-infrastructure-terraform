@@ -232,6 +232,21 @@ resource "azurerm_container_app_environment" "cae" {
   # (external_enabled = true) muss oeffentlich erreichbar bleiben, sonst ist
   # die Weboberflaeche aus dem Browser nicht mehr aufrufbar.
   internal_load_balancer_enabled = false
+
+  # Workload-Profiles-Environment mit AUSSCHLIESSLICH dem Consumption-Profil.
+  # Nachgetragen am 04.08.2026: Azure verlangt fuer eine VNet-integrierte
+  # Environment die Subnetz-Delegation Microsoft.App/environments (siehe
+  # network.tf), und ein delegiertes Subnetz bedingt eine Workload-Profiles-
+  # Environment.
+  #
+  # KEIN Dedicated-Profil. Damit laufen alle Container Apps weiterhin auf
+  # Consumption und werden verbrauchsbasiert abgerechnet — ein Dedicated-Profil
+  # wuerde dagegen rund um die Uhr pro Instanz berechnet, unabhaengig von der
+  # Auslastung. Wer hier ein zweites Profil ergaenzt, aendert das Kostenmodell.
+  workload_profile {
+    name                  = "Consumption"
+    workload_profile_type = "Consumption"
+  }
 }
 
 # Container App
@@ -241,6 +256,12 @@ resource "azurerm_container_app" "api" {
   container_app_environment_id = azurerm_container_app_environment.cae.id
   revision_mode                = var.revision_mode
   tags                         = local.common_tags
+
+  # Explizite Zuordnung zum Consumption-Profil der Environment (siehe dort).
+  # Ohne diese Angabe waehlt Azure zwar ebenfalls Consumption, aber die
+  # Zuordnung waere implizit — und damit unsichtbar, falls je ein zweites
+  # Profil hinzukaeme.
+  workload_profile_name = "Consumption"
 
   identity {
     type         = "UserAssigned"
