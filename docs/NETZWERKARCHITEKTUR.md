@@ -17,10 +17,13 @@
 | **IST** | Heute in Azure vorhanden und per Abfrage nachgewiesen (Abschnitt 9). |
 | **SOLL** | Als Terraform-Code geschrieben, aber noch nicht vollständig ausgerollt. |
 
-> **Stand 04.08.2026:** VNet und Subnetz sind angelegt. Container App Environment
-> und Container App wurden beim ersten Apply gelöscht, die Neuanlage schlug fehl
-> (siehe R4) und wurde korrigiert. Peering und DNS-Link stehen noch aus.
-> Der Netzwerkpfad zu Smart Planning ist damit **noch nicht hergestellt**.
+> **Stand 08.08.2026 — die Infrastrukturkette steht vollständig.**
+> VNet, delegiertes Subnetz, Workload-Profiles-Environment und Container App sind
+> ausgerollt; beide Peering-Richtungen stehen auf `Connected`, der DNS-Zonen-Link
+> auf `Completed`. Die Container App ist `Healthy` und antwortet.
+> **Noch offen ist allein der fachliche Nachweis:** ein echter ESAROM-Aufruf aus
+> der Container App (Snapshot-Validierung). Bis dahin ist belegt, dass der Pfad
+> *gebaut* ist — nicht, dass er *trägt*.
 
 Farbkonvention (kompatibel zur bestehenden Architekturdokumentation):
 
@@ -363,10 +366,26 @@ unterscheiden sich nach Region sowie zwischen Idle- und Active-Tarif.
 
 | # | Punkt | Status |
 |---|---|---|
-| 1 | Korrigierten `apply` ausführen (stellt das Backend wieder her) | **offen, dringend** |
-| 2 | Peering DEV → IDP, Portal | offen |
-| 3 | Gegenrichtung prüfen (`Connected`, nicht `Initiated`) | offen |
-| 4 | Private-DNS-Zonen-Link | offen |
-| 5 | `deploy-frontend.yml` nachziehen (neue FQDN) | offen |
-| 6 | Fachlicher Nachweis: Snapshot-Validierung aus der Container App | offen |
+| 1 | Korrigierten `apply` ausführen | ✅ **erledigt 08.08.2026** |
+| 2 | Peering DEV → IDP (`peer-agenticai-to-idp`) | ✅ `Connected` |
+| 3 | Gegenrichtung (`peer-idp-to-agenticai`) | ✅ `Connected` |
+| 4 | Private-DNS-Zonen-Link (`link-agentic-ai-mfg`) | ✅ `Completed` |
+| 5 | `deploy-frontend.yml` nachziehen (neue FQDN) | ✅ erledigt |
+| 6 | **Fachlicher Nachweis: Snapshot-Validierung aus der Container App** | **offen** |
 | 7 | `10.113.0.0/22` gegen das IPAM bestätigen | offen, nicht blockierend |
+
+### Abnahmestand 08.08.2026
+
+| Prüfung | Ergebnis |
+|---|---|
+| Container App Revision | `--0000002`, **Healthy**, 1 Replica |
+| Laufendes Image | `agentic-ai-backend:0.3.1` |
+| Ingress erreichbar | `GET /` → 200 |
+| Datenbankverbindung | `GET /api/dashboard/metrics` → 200 |
+| Peering beide Richtungen | `Connected` / `Connected` |
+| Hub-Peering des IDP-Spokes | unverändert `Connected` |
+| DNS-Zonen-Link | `Completed`, bestehender Hub-Link unberührt |
+
+**Was damit NICHT bewiesen ist:** dass ein HTTPS-Aufruf aus dem Container die VM
+unter `10.112.19.8` tatsächlich erreicht. Peering und DNS sind konfiguriert —
+ob die Kette trägt, zeigt erst eine echte Snapshot-Validierung (Punkt 6).
