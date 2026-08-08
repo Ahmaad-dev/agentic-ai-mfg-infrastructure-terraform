@@ -209,12 +209,29 @@ resource "azurerm_log_analytics_workspace" "law" {
 }
 
 # Container App Environment
+#
+# VNET-INTEGRATION (04.08.2026): infrastructure_subnet_id gibt der Environment
+# einen Weg in ein privates Netz — Voraussetzung dafuer, dass die Container App
+# die Smart-Planning-VM (10.112.19.8, keine oeffentliche IP) erreicht.
+#
+# ACHTUNG — ERZWINGT NEUANLAGE: infrastructure_subnet_id ist unveraenderlich.
+# Terraform zerstoert und erstellt Environment UND Container App neu. Folge:
+# die Backend-FQDN aendert sich. Danach muss deploy-frontend.yml einmal laufen,
+# damit BACKEND_URL_PLACEHOLDER in ui/scripts/config.js auf die neue URL zeigt.
 resource "azurerm_container_app_environment" "cae" {
   name                       = "${var.cae_name}-${local.suffix}"
   resource_group_name        = azurerm_resource_group.rg.name
   location                   = azurerm_resource_group.rg.location
   log_analytics_workspace_id = azurerm_log_analytics_workspace.law.id
+  infrastructure_subnet_id   = azurerm_subnet.cae.id
   tags                       = local.common_tags
+
+  # false = die Environment bekommt einen oeffentlichen Load Balancer.
+  # Das ist hier ZWINGEND: die VNet-Integration soll nur den AUSGEHENDEN
+  # Verkehr durch das Subnetz leiten. Der eingehende Ingress der Container App
+  # (external_enabled = true) muss oeffentlich erreichbar bleiben, sonst ist
+  # die Weboberflaeche aus dem Browser nicht mehr aufrufbar.
+  internal_load_balancer_enabled = false
 }
 
 # Container App

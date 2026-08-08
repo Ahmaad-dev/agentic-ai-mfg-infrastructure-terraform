@@ -16,6 +16,16 @@ mi_name  = "mi-agentic-ai-mfg"
 
 storage_container_name = "snapshots"
 
+# Netzwerk fuer die Smart-Planning-Anbindung (04.08.2026), siehe network.tf.
+# 10.113.0.0/22 ist gegen alle am Hub vnet-p-weu-ccadmm-hub sichtbaren
+# Peerings kollisionsfrei. Vor dem ersten Apply gegen das IPAM gegenpruefen.
+# Das Peering nach vnet-t-weu-ccadmm-idp ist ein GLOBAL Peering
+# (swedencentral <-> westeurope) — hoeherer Preis je GB, ~20 ms Latenz.
+vnet_name          = "vnet-agentic-ai-mfg"
+vnet_address_space = "10.113.0.0/22"
+cae_subnet_name    = "snet-cae-infrastructure"
+cae_subnet_prefix  = "10.113.0.0/23"
+
 # Resources recreated after manually deleting rg-agentic-ai-mfg in the portal
 manual_rg_name                   = "rg-agentic-ai-mfg"
 foundry_account_name             = "agentic-ai-mfg"

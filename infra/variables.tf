@@ -58,6 +58,53 @@ variable "cae_name" {
   description = "Container App Environment Name"
 }
 
+# --- Netzwerk (Smart-Planning-Anbindung, siehe network.tf) -------------------
+
+variable "vnet_name" {
+  type        = string
+  default     = "vnet-agentic-ai-mfg"
+  description = "Virtual Network Name"
+}
+
+variable "vnet_address_space" {
+  type        = string
+  default     = "10.113.0.0/22"
+  description = <<-EOT
+    Adressraum des VNets. Darf sich mit KEINEM Netz ueberschneiden, mit dem
+    spaeter gepeert wird. Belegt sind laut Hub-Peerings (Stand 2026-08-04):
+    10.112.0.0/23 (Hub), 10.112.16.0/22 (IDP), 10.112.32.0/29,
+    10.127.224.0/22, 10.127.228.0/24, 10.128.0.0/22 bis 10.128.12.0/22,
+    10.100.200.0/22. Vor dem ersten Apply gegen das IPAM gegenpruefen —
+    sichtbar sind hier nur die an DIESEN Hub gepeerten Bereiche.
+  EOT
+
+  validation {
+    condition     = can(cidrhost(var.vnet_address_space, 0))
+    error_message = "vnet_address_space must be a valid CIDR block."
+  }
+}
+
+variable "cae_subnet_name" {
+  type        = string
+  default     = "snet-cae-infrastructure"
+  description = "Name des Infrastruktur-Subnetzes der Container App Environment"
+}
+
+variable "cae_subnet_prefix" {
+  type        = string
+  default     = "10.113.0.0/23"
+  description = <<-EOT
+    Infrastruktur-Subnetz der Container App Environment. Mindestens /23 fuer
+    eine Consumption-only Environment. Muss innerhalb von vnet_address_space
+    liegen und gehoert exklusiv der Environment.
+  EOT
+
+  validation {
+    condition     = can(cidrhost(var.cae_subnet_prefix, 0))
+    error_message = "cae_subnet_prefix must be a valid CIDR block."
+  }
+}
+
 variable "ca_name" {
   type        = string
   default     = "ca-agentic-ai-backend"

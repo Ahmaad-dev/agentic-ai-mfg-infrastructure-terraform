@@ -89,6 +89,23 @@ output "container_app_environment_id" {
   description = "Container App Environment ID"
 }
 
+# --- Werte fuer die drei MANUELLEN Schritte im Portal ------------------------
+# Nach dem Apply hier ablesen und in docs/NETWORK_SETUP.md eintragen.
+output "network_manual_steps" {
+  description = "Angaben fuer Peering und DNS-Link, die manuell im Portal erfolgen"
+  value = {
+    vnet_name           = azurerm_virtual_network.main.name
+    vnet_id             = azurerm_virtual_network.main.id
+    vnet_resource_group = azurerm_resource_group.rg.name
+    vnet_address_space  = var.vnet_address_space
+    cae_subnet          = azurerm_subnet.cae.name
+
+    peer_to_vnet_id = "/subscriptions/40e08bde-e349-4ac5-8299-6c6e2f5c33f6/resourceGroups/rg-t-weu-ccadmm-idp-network/providers/Microsoft.Network/virtualNetworks/vnet-t-weu-ccadmm-idp"
+    dns_zone        = "internal.idp.cca-dev.com (rg-p-weu-ccadmm-hub-dns, Sub 9b942b89-e1d1-454e-a11c-18531063ef2d)"
+    target_host     = "vm-t-weu-ccadmm-idp-test02.internal.idp.cca-dev.com -> 10.112.19.8"
+  }
+}
+
 output "manual_resource_group_name" {
   value       = module.manual_resources.resource_group_name
   description = "Resource group recreated from the former manual deployment"
