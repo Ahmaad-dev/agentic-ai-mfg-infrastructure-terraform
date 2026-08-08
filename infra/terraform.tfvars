@@ -50,7 +50,14 @@ min_replicas     = 1
 max_replicas     = 1
 container_cpu    = 0.5
 container_memory = "1Gi"
-image_tag        = "0.2.1"
+# 08.08.2026 von 0.2.1 auf 0.3.1 gehoben. 0.2.1 stammt vom 18.02.2026 — also aus
+# der Zeit VOR dem Dockerfile-Umbau (Requirements system-weit statt `pip install
+# --user`, plus `USER appuser`). In diesem alten Image liegt gunicorn unter
+# /root/.local/bin/, worauf appuser nicht zugreifen darf. Der Container startete
+# daher gar nicht:
+#   can't open file '/root/.local/bin/gunicorn': [Errno 13] Permission denied
+# 0.3.1 wurde am 04.08.2026 aus dem korrigierten Dockerfile gebaut.
+image_tag = "0.3.1"
 
 # Azure OpenAI Configuration
 # 02.08.2026 von gpt-4o auf gpt-4.1 umgestellt. Diese EINE Zeile speist ueber das
