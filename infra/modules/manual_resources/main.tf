@@ -74,7 +74,7 @@ resource "azurerm_cognitive_deployment" "gpt_4_1" {
 
   sku {
     name     = "GlobalStandard"
-    capacity = 50
+    capacity = 50000
   }
 }
 
