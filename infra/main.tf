@@ -430,20 +430,20 @@ resource "azurerm_container_app" "api" {
         name        = "AZURE_OPENAI_ORCHESTRATION_DEPLOYMENT"
         secret_name = "azure-openai-deployment"
       }
-      # Verhaltensschalter der Anwendung.
-      # Beide lasen bisher nur ihre Codestandards, weil sie hier fehlten — sie liessen sich
-      # also ohne einen neuen Image-Build nicht umstellen. HUMAN_IN_THE_LOOP ist der
-      # Sicherheitsschalter des Projekts (false = die KI wendet Korrekturen ohne Freigabe an),
-      # RULEBOOK_MODE waehlt zwischen den Lernkarten und dem alten Monolith-Regelwerk.
-      env {
-        name  = "HUMAN_IN_THE_LOOP"
-        value = var.human_in_the_loop
-      }
-
-      env {
-        name  = "RULEBOOK_MODE"
-        value = var.rulebook_mode
-      }
+      # HINWEIS (2026-08-23, AP-UI1.1): HUMAN_IN_THE_LOOP und RULEBOOK_MODE standen hier
+      # bis heute als Verhaltensschalter. Sie sind auf ausdrueckliche Entscheidung des
+      # Projektverantwortlichen entfernt worden, weil beide Schalter seit AP-UI1 in der
+      # Anwendung selbst konfigurierbar sind (Zahnrad -> Einstellungen, je Chat-Sitzung).
+      #
+      # Verhaltensneutral: die hier gesetzten Werte waren mit den Codestandards identisch
+      # ("true" bzw. "cards", agent_config.py:10 und :46), und keine tfvars ueberschrieb
+      # sie. Ohne die Variablen gilt jetzt der Codestandard.
+      #
+      # ACHTUNG, bewusst in Kauf genommen: HUMAN_IN_THE_LOOP ist der Sicherheitsschalter
+      # des Projekts (false = Korrekturen werden ohne menschliche Freigabe angewendet).
+      # Er laesst sich hier nun NICHT mehr deklarativ festlegen; der sichere Zustand haengt
+      # allein am Codestandard. Wer ihn deploymentseitig erzwingen will, muss die Variable
+      # wieder einfuehren. Siehe agentic-ai-mfg, docs/BA_PROJECT_LOG.md [BA-092].
 
       # Container und Praefix der Lernkarten. Der leere Praefix ist Absicht: die Karten
       # liegen in der Wurzel ihres eigenen Containers, sonst waere der Pfad "skills/skills/".

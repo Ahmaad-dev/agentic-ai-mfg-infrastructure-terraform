@@ -106,16 +106,23 @@ Snapshot-Container, würde ein Aufräumen dort das Regelwerk mitlöschen.
 Korrektur-Pipeline sofort — ohne Deployment, ohne Zugriff auf das Anwendungs-Repository. Für
 den Abgleich mit dem Repository gibt es dort `python -m tools.sync_skills`.
 
-### Verhaltensschalter
+### Verhaltensschalter — seit 23.08.2026 nicht mehr hier
 
-| Variable | Standard | Bedeutung |
-|---|---|---|
-| `HUMAN_IN_THE_LOOP` | `true` | **Sicherheitsschalter.** `false` heißt: die KI wendet Korrekturen ohne menschliche Freigabe an. Nur mit ausdrücklicher Entscheidung umstellen. |
-| `RULEBOOK_MODE` | `cards` | `cards` = Lernkarten aus dem Blob, `monolith` = die eine große Regeldatei aus dem Image |
+`HUMAN_IN_THE_LOOP` und `RULEBOOK_MODE` wurden aus `main.tf` und `variables.tf`
+**entfernt**. Beide Schalter sind seit AP-UI1 in der Anwendung selbst konfigurierbar:
+**Zahnrad → Einstellungen**, wirksam je Chat-Sitzung.
 
-Beide sind über `variables.tf` gesetzt und mit einem `validation`-Block abgesichert: ein
-ungültiger Wert bricht im `plan` ab. **`terraform validate` prüft Variablenwerte nicht** —
-dafür ist `terraform plan` nötig.
+Die Entfernung war verhaltensneutral — die gesetzten Werte entsprachen exakt den
+Standardwerten im Code (`agent_config.py`: `HUMAN_IN_THE_LOOP="true"`,
+`RULEBOOK_MODE="cards"`), und keine `tfvars` überschrieb sie. Ohne die Variablen gilt
+jetzt dieser Codestandard.
+
+> **Was dadurch entfällt:** `HUMAN_IN_THE_LOOP` ist der Sicherheitsschalter des Projekts
+> (`false` = Korrekturen werden ohne menschliche Freigabe angewendet). Er lässt sich hier
+> nun **nicht mehr deklarativ festlegen**, und der `validation`-Block, der ungültige Werte
+> im `plan` abfing, ist mit ihm entfallen. Der sichere Zustand hängt allein am
+> Codestandard. Wer ihn deploymentseitig erzwingen will, muss Variable **und** `env`-Block
+> wieder einführen.
 
 ### Übrige
 

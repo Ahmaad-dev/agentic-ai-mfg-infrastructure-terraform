@@ -369,27 +369,14 @@ variable "notification_recipient_email" {
   }
 }
 
-variable "human_in_the_loop" {
-  description = "Sicherheitsschalter: true = jede Korrektur braucht eine menschliche Freigabe. NIEMALS ohne ausdrueckliche Entscheidung auf false setzen."
-  type        = string
-  default     = "true"
-
-  validation {
-    condition     = contains(["true", "false"], lower(var.human_in_the_loop))
-    error_message = "human_in_the_loop muss \"true\" oder \"false\" sein."
-  }
-}
-
-variable "rulebook_mode" {
-  description = "Regelwerk-Quelle: cards = Lernkarten aus dem Blob Storage (Praefix skills/), monolith = die eine grosse Regeldatei aus dem Image."
-  type        = string
-  default     = "cards"
-
-  validation {
-    condition     = contains(["cards", "monolith"], lower(var.rulebook_mode))
-    error_message = "rulebook_mode muss \"cards\" oder \"monolith\" sein."
-  }
-}
+# ENTFERNT am 2026-08-23 (AP-UI1.1): die Variablen "human_in_the_loop" und
+# "rulebook_mode". Sie wurden ausschliesslich von den beiden env-Bloecken in main.tf
+# benutzt, die auf ausdrueckliche Entscheidung entfernt wurden. Eine nicht mehr
+# referenzierte Variable mitzufuehren waere toter Code und wuerde faelschlich eine
+# Stellschraube suggerieren, die nichts mehr bewirkt.
+#
+# Beide Schalter sind seit AP-UI1 in der Anwendung konfigurierbar. Wer sie wieder
+# deploymentseitig festlegen will, braucht die Variable UND den env-Block in main.tf.
 
 variable "skills_container_name" {
   description = "Blob-Container fuer die Lernkarten (AP7). Getrennt von den Snapshots, damit Konfiguration und Daten nicht im selben Behaelter liegen."
