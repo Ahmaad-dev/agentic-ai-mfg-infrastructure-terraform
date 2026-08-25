@@ -168,6 +168,29 @@ resource "azurerm_key_vault_secret" "azure_speech_key" {
   depends_on   = [azurerm_role_assignment.terraform_kv_secrets_officer]
 }
 
+# Key Vault Secret - Storage Connection String
+#
+# BA-123 (25.08.2026): Diese Verbindungszeichenfolge stand bis dahin als KLARTEXT-Umgebungs-
+# variable in der Container-App (`value = azurerm_storage_account.storage.primary_connection_string`)
+# und enthaelt damit den Storage-Account-Key im Klartext. Jeder, der `az containerapp show`
+# ausfuehren darf, konnte ihn lesen; er erschien ausserdem in ARM-Exporten und in jeder
+# Revisionsdefinition. Alle UEBRIGEN Geheimnisse dieser App liefen bereits ueber den Key
+# Vault — diese eine Variable fiel aus dem Muster.
+#
+# Gefunden bei einer Betriebspruefung, bei der der Wert in einer Terminalausgabe sichtbar
+# wurde. Der Key ist damit als kompromittiert zu behandeln und zu rotieren; siehe die
+# Reihenfolge in `docs/BA_PROJECT_LOG.md`, Eintrag BA-123.
+#
+# `depends_on` wie bei allen anderen Secrets: ohne die Rollenzuweisung darf Terraform selbst
+# nicht in den Key Vault schreiben.
+resource "azurerm_key_vault_secret" "storage_connection_string" {
+  name         = "AZURE-STORAGE-CONNECTION-STRING"
+  value        = azurerm_storage_account.storage.primary_connection_string
+  key_vault_id = azurerm_key_vault.kv.id
+  tags         = local.common_tags
+  depends_on   = [azurerm_role_assignment.terraform_kv_secrets_officer]
+}
+
 # Storage Account für Blob Storage (Snapshots)
 resource "azurerm_storage_account" "storage" {
   name                             = "${var.sa_name}${local.suffix}"
@@ -463,9 +486,11 @@ resource "azurerm_container_app" "api" {
         value = "AZURE"
       }
 
+      # BA-123: ueber den Key Vault statt als Klartextwert — siehe die Begruendung an
+      # `azurerm_key_vault_secret.storage_connection_string`.
       env {
-        name  = "AZURE_STORAGE_CONNECTION_STRING"
-        value = azurerm_storage_account.storage.primary_connection_string
+        name        = "AZURE_STORAGE_CONNECTION_STRING"
+        secret_name = "azure-storage-connection-string"
       }
 
       env {
@@ -542,6 +567,15 @@ resource "azurerm_container_app" "api" {
   secret {
     name                = "notification-recipient-email"
     key_vault_secret_id = azurerm_key_vault_secret.notification_recipient_email.versionless_id
+    identity            = azurerm_user_assigned_identity.mi.id
+  }
+
+  # BA-123: die Storage-Verbindungszeichenfolge — vorher Klartext-Umgebungsvariable.
+  # `versionless_id` wie bei allen anderen: nach einer Key-Rotation zieht die App den
+  # neuen Wert, ohne dass die Referenz angefasst werden muss.
+  secret {
+    name                = "azure-storage-connection-string"
+    key_vault_secret_id = azurerm_key_vault_secret.storage_connection_string.versionless_id
     identity            = azurerm_user_assigned_identity.mi.id
   }
 
